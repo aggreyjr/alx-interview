@@ -1,37 +1,72 @@
 #!/usr/bin/python3
-'''a script that reads stdin line by line and computes metrics'''
+"""
+Processing stdin line by line and calculating metrics.
+
+This script reads input lines from stdin, parses them,
+and computes metrics such as file size and HTTP status code occurrences.
+
+It prints statistics in ascending order,
+including the file size and the count of each HTTP status code encountered.
+
+Usage:
+    ./0-generator.py | ./0-stats.py
+"""
 
 
-import sys
+if __name__ == "__main__":
+    import sys
 
-cache = {'200': 0, '301': 0, '400': 0, '401': 0,
-         '403': 0, '404': 0, '405': 0, '500': 0}
-total_size = 0
-counter = 0
+    status_code_counts = {
+        "200": 0,
+        "301": 0,
+        "400": 0,
+        "401": 0,
+        "403": 0,
+        "404": 0,
+        "405": 0,
+        "500": 0,
+    }
+    log_entry_count = 1
+    file_size = 0
 
-try:
-    for line in sys.stdin:
-        line_list = line.split(" ")
-        if len(line_list) > 4:
-            code = line_list[-2]
-            size = int(line_list[-1])
-            if code in cache.keys():
-                cache[code] += 1
-            total_size += size
-            counter += 1
+    def parse_line(log_entry):
+        """
+        Read, parse, and extract relevant data from a given log entry.
 
-        if counter == 10:
-            counter = 0
-            print('File size: {}'.format(total_size))
-            for key, value in sorted(cache.items()):
-                if value != 0:
-                    print('{}: {}'.format(key, value))
+        Args:
+            log_entry (str): A log entry to be parsed.
 
-except Exception as err:
-    pass
+        Returns:
+            int: The size of the file indicated in the log entry.
+        """
+        try:
+            parsed_entry = log_entry.split()
+            status_code = parsed_entry[-2]
+            if status_code in status_code_counts.keys():
+                status_code_counts[status_code] += 1
+            return int(parsed_entry[-1])
+        except Exception:
+            return 0
 
-finally:
-    print('File size: {}'.format(total_size))
-    for key, value in sorted(cache.items()):
-        if value != 0:
-            print('{}: {}'.format(key, value))
+    def print_stats():
+        """
+        Print statistics in ascending order based on HTTP status codes.
+
+        Prints the total file size and the log_entry_count
+        of each HTTP status code encountered.
+        """
+        print(f"File size: {file_size}")
+        for key in sorted(status_code_counts.keys()):
+            if status_code_counts[key]:
+                print(f"{key}: {status_code_counts[key]}")
+
+    try:
+        for log_entry in sys.stdin:
+            file_size += parse_line(log_entry)
+            if log_entry_count % 10 == 0:
+                print_stats()
+            log_entry_count += 1
+    except KeyboardInterrupt:
+        print_stats()
+        raise
+    print_stats()
