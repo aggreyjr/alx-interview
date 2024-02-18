@@ -1,53 +1,35 @@
 #!/usr/bin/node
 
-const request = require('request');
+const util = require('util');
+const request = util.promisify(require('request'));
 
-const movieId = process.argv[2];
-const filmEndPoint = 'https://swapi-api.hbtn.io/api/films/' + movieId;
-let people = [];
-const names = [];
+if (process.argv.length !== 3 || isNaN(parseInt(process.argv[2]))) {
+  console.error('Usage: ./starWarsCharacters.js <Film_ID>');
+  process.exit(1);
+}
 
-const requestCharacters = async () => {
-  await new Promise(resolve => request(filmEndPoint, (err, res, body) => {
-    if (err || res.statusCode !== 200) {
-      console.error('Error: ', err, '| StatusCode: ', res.statusCode);
-    } else {
-      const jsonBody = JSON.parse(body);
-      people = jsonBody.characters;
-      resolve();
+const filmID = parseInt(process.argv[2]);
+
+async function starwarsCharacters (filmId) {
+  try {
+    const endpoint = `https://swapi-api.hbtn.io/api/films/${filmId}`;
+    const response = await request(endpoint);
+    const filmData = JSON.parse(response.body);
+
+    if (!filmData.characters || filmData.characters.length === 0) {
+      console.log('No characters found for the given film ID.');
+      return;
     }
-  }));
-};
 
-const requestNames = async () => {
-  if (people.length > 0) {
-    for (const p of people) {
-      await new Promise(resolve => request(p, (err, res, body) => {
-        if (err || res.statusCode !== 200) {
-          console.error('Error: ', err, '| StatusCode: ', res.statusCode);
-        } else {
-          const jsonBody = JSON.parse(body);
-          names.push(jsonBody.name);
-          resolve();
-        }
-      }));
+    for (const urlCharacter of filmData.characters) {
+      const characterResponse = await request(urlCharacter);
+      const character = JSON.parse(characterResponse.body);
+      console.log(character.name);
     }
-  } else {
-    console.error('Error: Got no Characters for some reason');
+  } catch (error) {
+    console.error('Error:', error.message);
+    process.exit(1);
   }
-};
+}
 
-const getCharNames = async () => {
-  await requestCharacters();
-  await requestNames();
-
-  for (const n of names) {
-    if (n === names[names.length - 1]) {
-      process.stdout.write(n);
-    } else {
-      process.stdout.write(n + '\n');
-    }
-  }
-};
-
-getCharNames();
+starwarsCharacters(filmID);
